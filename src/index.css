@@ -257,6 +257,123 @@ button {
   }
 }
 
+/* ============================================================
+   Sidebar do computador — trilho recolhido por padrão (só ícones),
+   expande ao passar o mouse (ou tocar, em telas com touch) mostrando
+   os rótulos. A largura fica numa camada interna posicionada em
+   absolute pra a expansão flutuar por cima do conteúdo em vez de
+   empurrar a página inteira.
+   ============================================================ */
+.srd-sidebar-desktop {
+  position: relative;
+  width: 76px;
+  min-width: 76px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.srd-sidebar-inner {
+  position: absolute;
+  inset: 0;
+  width: 76px;
+  background: #17130e;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 12px;
+  overflow: hidden;
+  z-index: 40;
+  transition: width 0.18s ease, box-shadow 0.18s ease;
+}
+
+.srd-sidebar-desktop:hover .srd-sidebar-inner,
+.srd-sidebar-desktop:focus-within .srd-sidebar-inner {
+  width: 260px;
+  box-shadow: 12px 0 30px rgba(0, 0, 0, 0.35);
+}
+
+.srd-sidebar-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+  margin-bottom: 28px;
+  flex-shrink: 0;
+}
+
+.srd-sidebar-logomark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.srd-sidebar-logowordmark {
+  height: 22px;
+  width: auto;
+  max-width: 170px;
+  display: block;
+}
+
+.srd-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.srd-sidebar-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 14px 6px;
+  flex-shrink: 0;
+}
+
+.srd-sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+/* Rótulos de texto (nome dos itens de menu, wordmark, usuário/Sair):
+   escondidos por padrão via max-width (não display:none — assim o
+   layout flex não recalcula e o ícone continua perfeitamente
+   centralizado no trilho recolhido). Revelados junto com a expansão
+   do painel no hover/foco. */
+.srd-nav-label {
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 0.15s ease, max-width 0.18s ease;
+}
+
+.srd-sidebar-desktop:hover .srd-nav-label,
+.srd-sidebar-desktop:focus-within .srd-nav-label {
+  opacity: 1;
+  max-width: 180px;
+}
+
+/* Bolinha vermelha pulsante do botão "Parar" enquanto grava áudio na
+   Comunidade (estilo indicador de gravação). */
+.srd-recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dc4f63;
+  display: inline-block;
+  animation: srd-pulse 1s ease-in-out infinite;
+}
+
+@keyframes srd-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
 /* Aula em destaque: no computador fica lado a lado (thumb + texto); no
    celular empilha, senão a coluna com minWidth fixo estoura a tela. */
 @media (max-width: 640px) {

@@ -138,6 +138,7 @@ function CategoryTabs({ active, onSelect, counts }) {
         marginBottom: 14,
         flexWrap: 'wrap',
         justifyContent: 'center',
+        borderRadius: 14,
       }}
     >
       {CATEGORIES.map((cat) => {
@@ -152,7 +153,7 @@ function CategoryTabs({ active, onSelect, counts }) {
               gap: 7,
               background: isActive ? 'rgba(232,189,110,0.14)' : 'transparent',
               border: 'none',
-              borderRadius: 10,
+              borderRadius: 8,
               padding: '8px 14px',
               fontSize: 13.5,
               fontWeight: isActive ? 700 : 500,
@@ -160,7 +161,7 @@ function CategoryTabs({ active, onSelect, counts }) {
               whiteSpace: 'nowrap',
             }}
           >
-            {cat.emoji} {cat.label}
+            {cat.label}
             <Badge count={counts[cat.key]} />
           </button>
         )
@@ -217,20 +218,53 @@ function MediaPreview({ file, previewUrl, onRemove }) {
   )
 }
 
+// Tipos de áudio aceitos pra gravação (na ordem de preferência) — nem
+// todo navegador suporta os mesmos formatos com o MediaRecorder.
+const AUDIO_MIME_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
+
+function pickAudioMimeType() {
+  if (typeof window === 'undefined' || !window.MediaRecorder) return ''
+  return AUDIO_MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type)) || ''
+}
+
+function formatSeconds(total) {
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 function Composer({ onPost, authorInitial, authorAvatarUrl, category, onCategoryChange, categories }) {
   const [value, setValue] = useState('')
   const [mediaFile, setMediaFile] = useState(null)
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState(null)
   const [busy, setBusy] = useState(false)
   const [mediaError, setMediaError] = useState('')
+  const [recording, setRecording] = useState(false)
+  const [recordSeconds, setRecordSeconds] = useState(0)
   const fileInputRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
+  const streamRef = useRef(null)
+  const recordTimerRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      clearInterval(recordTimerRef.current)
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+    }
+  }, [])
 
   function handleFilePick(e) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    if (!mediaTypeFor(file)) {
-      setMediaError('Esse tipo de arquivo não é suportado. Envie foto, vídeo ou áudio.')
+    const type = mediaTypeFor(file)
+    if (type === 'audio') {
+      setMediaError('Pra áudio, use o botão de gravar (🎙️) aqui do lado.')
+      return
+    }
+    if (!type) {
+      setMediaError('Esse tipo de arquivo não é suportado. Envie foto ou vídeo.')
       return
     }
     if (file.size > MAX_MEDIA_BYTES) {
@@ -248,9 +282,52 @@ function Composer({ onPost, authorInitial, authorAvatarUrl, category, onCategory
     setMediaError('')
   }
 
+  async function startRecording() {
+    if (mediaFile || busy || recording) return
+    setMediaError('')
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      setMediaError('Seu navegador não suporta gravação de áudio.')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      const mimeType = pickAudioMimeType()
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      audioChunksRef.current = []
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+      recorder.onstop = () => {
+        const finalType = mimeType || 'audio/webm'
+        const blob = new Blob(audioChunksRef.current, { type: finalType })
+        const ext = finalType.includes('mp4') ? 'm4a' : 'webm'
+        const file = new File([blob], `audio-${Date.now()}.${ext}`, { type: finalType })
+        setMediaFile(file)
+        setMediaPreviewUrl(URL.createObjectURL(file))
+        streamRef.current?.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setRecording(true)
+      setRecordSeconds(0)
+      recordTimerRef.current = setInterval(() => setRecordSeconds((s) => s + 1), 1000)
+    } catch {
+      setMediaError('Não consegui acessar o microfone. Verifique a permissão do navegador.')
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop()
+    setRecording(false)
+    clearInterval(recordTimerRef.current)
+    recordTimerRef.current = null
+  }
+
   async function submit() {
     const text = value.trim()
-    if ((!text && !mediaFile) || busy) return
+    if ((!text && !mediaFile) || busy || recording) return
     setBusy(true)
     try {
       await onPost(text, mediaFile)
@@ -313,21 +390,60 @@ function Composer({ onPost, authorInitial, authorAvatarUrl, category, onCategory
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,video/*,audio/*"
+              accept="image/*,video/*"
               onChange={handleFilePick}
               style={{ display: 'none' }}
             />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              title="Anexar foto, vídeo ou áudio"
+              title="Anexar foto ou vídeo"
               className="srd-btn-outline"
-              style={{ padding: '7px 12px', fontSize: 12.5 }}
+              disabled={recording || !!mediaFile}
+              style={{ padding: '7px 12px', fontSize: 12.5, opacity: recording || mediaFile ? 0.5 : 1 }}
             >
-              📎 Foto/vídeo/áudio
+              📎 Foto/vídeo
             </button>
+            {!recording ? (
+              <button
+                type="button"
+                onClick={startRecording}
+                title="Gravar áudio"
+                className="srd-btn-outline"
+                disabled={!!mediaFile || busy}
+                style={{ padding: '7px 12px', fontSize: 12.5, opacity: mediaFile ? 0.5 : 1 }}
+              >
+                🎙️ Gravar áudio
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={stopRecording}
+                title="Parar gravação e revisar"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '7px 12px',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  borderRadius: 999,
+                  border: '1px solid rgba(220,79,99,0.4)',
+                  background: 'rgba(220,79,99,0.14)',
+                  color: '#dc8290',
+                }}
+              >
+                <span className="srd-recording-dot" />
+                Parar • {formatSeconds(recordSeconds)}
+              </button>
+            )}
           </div>
-          <button className="srd-btn-gold" onClick={submit} disabled={busy} style={{ opacity: busy ? 0.6 : 1 }}>
+          <button
+            className="srd-btn-gold"
+            onClick={submit}
+            disabled={busy || recording}
+            style={{ opacity: busy || recording ? 0.6 : 1 }}
+          >
             {busy ? 'Publicando…' : 'Publicar'}
           </button>
         </div>
@@ -545,9 +661,14 @@ export default function Comunidade() {
       const path = `${user.id}/${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage
         .from('community-media')
-        .upload(path, mediaFile, { upsert: false, cacheControl: '3600' })
+        .upload(path, mediaFile, { upsert: false, cacheControl: '3600', contentType: mediaFile.type || undefined })
       if (uploadError) {
-        setError('Não consegui enviar o arquivo anexado. Tente de novo.')
+        // eslint-disable-next-line no-console
+        console.error('[Império] Erro upload mídia:', uploadError)
+        const hint = /bucket/i.test(uploadError.message || '')
+          ? ' O bucket "community-media" pode não existir ainda no Supabase — confira em Storage.'
+          : ''
+        setError(`Não consegui enviar o arquivo anexado (${uploadError.message || 'erro desconhecido'}).${hint}`)
         return
       }
       const { data: pub } = supabase.storage.from('community-media').getPublicUrl(path)
@@ -600,8 +721,17 @@ export default function Comunidade() {
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 24px' }}>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 24, textAlign: 'center' }}>
         <div style={{ fontSize: 26, fontWeight: 700, color: '#f5f1ea' }}>Comunidade</div>
+        <div
+          style={{
+            height: 3,
+            width: 64,
+            margin: '10px auto',
+            borderRadius: 999,
+            background: 'linear-gradient(90deg, transparent, #e8bd6e, transparent)',
+          }}
+        />
         <div style={{ fontSize: 14, color: '#a89f92', marginTop: 4 }}>
           Troque experiências com outros alunos da Mentoria Império.
         </div>

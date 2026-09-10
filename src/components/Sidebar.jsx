@@ -36,13 +36,33 @@ const MOBILE_TAB_ITEMS = NAV_MEMBROS.filter((item) => !item.external)
 const rowBaseStyle = {
   display: 'flex',
   alignItems: 'center',
-  gap: 12,
-  padding: '10px 14px',
+  justifyContent: 'center',
+  gap: 10,
+  padding: '9px 14px',
   borderRadius: 12,
   fontSize: 14,
   fontWeight: 500,
   color: '#c9c0b3',
   transition: 'background 0.15s ease, color 0.15s ease',
+}
+
+function IconBox({ Icon, isActive }) {
+  return (
+    <span
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        flexShrink: 0,
+        background: isActive ? 'rgba(232,189,110,0.18)' : 'transparent',
+      }}
+    >
+      <Icon color={isActive ? '#e8bd6e' : '#8f8577'} />
+    </span>
+  )
 }
 
 function NavRow({ to, label, Icon }) {
@@ -53,13 +73,13 @@ function NavRow({ to, label, Icon }) {
         ...rowBaseStyle,
         fontWeight: isActive ? 700 : 500,
         color: isActive ? '#e8bd6e' : '#c9c0b3',
-        background: isActive ? 'rgba(232,189,110,0.12)' : 'transparent',
+        background: isActive ? 'rgba(232,189,110,0.1)' : 'transparent',
       })}
     >
       {({ isActive }) => (
         <>
-          <Icon color={isActive ? '#e8bd6e' : '#8f8577'} />
-          {label}
+          <IconBox Icon={Icon} isActive={isActive} />
+          <span className="srd-nav-label">{label}</span>
         </>
       )}
     </NavLink>
@@ -75,19 +95,11 @@ function NavRowExternal({ label, Icon }) {
       href={SISTEMA_RENDA_URL}
       target={SISTEMA_RENDA_URL === '#' ? undefined : '_blank'}
       rel="noreferrer"
-      style={{
-        ...rowBaseStyle,
-        alignItems: 'flex-start',
-        fontSize: 13,
-        background: 'transparent',
-        textDecoration: 'none',
-      }}
+      style={{ ...rowBaseStyle, background: 'transparent', textDecoration: 'none' }}
     >
-      <span style={{ marginTop: 1, flexShrink: 0 }}>
-        <Icon color="#8f8577" />
-      </span>
-      <span style={{ flex: 1, lineHeight: 1.3 }}>{label}</span>
-      <span style={{ marginTop: 2, flexShrink: 0 }}>
+      <IconBox Icon={Icon} isActive={false} />
+      <span className="srd-nav-label" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+        {label}
         <IconExternal color="#8f8577" />
       </span>
     </a>
@@ -104,106 +116,77 @@ export default function Sidebar({ userName: userNameProp = 'Bia' }) {
     : NAV_CONTA
 
   return (
-    <aside
-      className="srd-sidebar-desktop"
-      style={{
-        width: 260,
-        minWidth: 260,
-        height: '100%',
-        background: '#17130e',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '24px 16px',
-      }}
-    >
-      <div
-        style={{
-          padding: '0 8px',
-          marginBottom: 28,
-        }}
-      >
-        <img
-          src={logoWordmark}
-          alt="Mentoria Império"
-          style={{ width: '100%', maxWidth: 210, height: 'auto', display: 'block' }}
-        />
-      </div>
+    <aside className="srd-sidebar-desktop">
+      <div className="srd-sidebar-inner">
+        <div className="srd-sidebar-logo-row">
+          <img src="/icons/icon-192.png" alt="" className="srd-sidebar-logomark" />
+          <img src={logoWordmark} alt="Mentoria Império" className="srd-sidebar-logowordmark srd-nav-label" />
+        </div>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {NAV_MEMBROS.map((item) =>
-          item.external ? (
-            <NavRowExternal key={item.label} {...item} />
-          ) : (
+        <nav className="srd-sidebar-nav">
+          {NAV_MEMBROS.map((item) =>
+            item.external ? (
+              <NavRowExternal key={item.label} {...item} />
+            ) : (
+              <NavRow key={item.to} {...item} />
+            )
+          )}
+        </nav>
+
+        <div className="srd-sidebar-divider" />
+
+        <nav className="srd-sidebar-nav">
+          {navConta.map((item) => (
             <NavRow key={item.to} {...item} />
-          )
-        )}
-      </nav>
+          ))}
+        </nav>
 
-      <div
-        style={{
-          height: 1,
-          background: 'rgba(255,255,255,0.07)',
-          margin: '14px 6px',
-        }}
-      />
+        <div style={{ flex: 1 }} />
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {navConta.map((item) => (
-          <NavRow key={item.to} {...item} />
-        ))}
-      </nav>
-
-      <div style={{ flex: 1 }} />
-
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '10px 8px',
-          borderTop: '1px solid rgba(255,255,255,0.07)',
-          paddingTop: 16,
-        }}
-      >
-        <div
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: '50%',
-            background: profile?.avatar_url
-              ? `center / cover no-repeat url(${profile.avatar_url})`
-              : 'linear-gradient(135deg,#f3d386,#c8862c)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 700,
-            fontSize: 14,
-            color: '#1a150f',
-            flexShrink: 0,
-          }}
-        >
-          {!profile?.avatar_url && initial}
-        </div>
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: '#f5f1ea', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {userName}
-        </div>
-        {configured && (
-          <button
-            onClick={signOut}
-            title="Sair"
+        <div className="srd-sidebar-footer">
+          <div
             style={{
-              background: 'none',
-              border: 'none',
-              color: '#8f8577',
-              fontSize: 12,
-              fontWeight: 600,
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: profile?.avatar_url
+                ? `center / cover no-repeat url(${profile.avatar_url})`
+                : 'linear-gradient(135deg,#f3d386,#c8862c)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: 13,
+              color: '#1a150f',
               flexShrink: 0,
             }}
           >
-            Sair
-          </button>
-        )}
+            {!profile?.avatar_url && initial}
+          </div>
+          <div
+            className="srd-nav-label"
+            style={{ fontSize: 13.5, fontWeight: 600, color: '#f5f1ea', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {userName}
+          </div>
+          {configured && (
+            <button
+              onClick={signOut}
+              title="Sair"
+              className="srd-nav-label"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#8f8577',
+                fontSize: 12,
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
+              Sair
+            </button>
+          )}
+        </div>
       </div>
     </aside>
   )
