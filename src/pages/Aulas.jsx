@@ -391,10 +391,72 @@ function LessonCard({ lesson, onPlay }) {
   )
 }
 
-function ModuleSection({ title, lessons, onPlay }) {
+// Banner grande no topo do módulo (só aparece se você colocar uma "Capa
+// personalizada" no módulo, no Painel admin) — mostra progresso e um botão
+// pra já ir direto pra próxima aula não concluída dele.
+function ModuleBanner({ coverUrl, done, total, onPlay }) {
+  return (
+    <button
+      onClick={onPlay}
+      className="srd-card"
+      style={{
+        position: 'relative',
+        display: 'block',
+        width: '100%',
+        textAlign: 'left',
+        padding: 0,
+        overflow: 'hidden',
+        marginBottom: 16,
+        aspectRatio: '3.2 / 1',
+        background: '#000',
+        cursor: 'pointer',
+      }}
+    >
+      <img
+        src={coverUrl}
+        alt=""
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(0deg, rgba(10,8,6,0.85) 0%, rgba(10,8,6,0.25) 40%, rgba(10,8,6,0) 65%)',
+        }}
+      />
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#fff' }}>
+          {done} de {total} aula{total > 1 ? 's' : ''}
+        </span>
+        <span
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: '50%',
+            background: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <IconPlay size={14} color="#1a150f" />
+        </span>
+      </div>
+    </button>
+  )
+}
+
+function ModuleSection({ mod, title, lessons, onPlay }) {
   if (lessons.length === 0) return null
+  const done = lessons.filter((l) => l.done).length
+  const firstPlayable = lessons.find((l) => !l.done && !l.lockInfo?.locked) || lessons.find((l) => !l.lockInfo?.locked) || lessons[0]
+
   return (
     <div style={{ marginBottom: 32 }}>
+      {mod?.cover_url && (
+        <ModuleBanner coverUrl={mod.cover_url} done={done} total={lessons.length} onPlay={() => onPlay(firstPlayable)} />
+      )}
       <div style={{ fontSize: 15, fontWeight: 700, color: '#e8bd6e', marginBottom: 14 }}>{title}</div>
       <div
         style={{
@@ -716,6 +778,7 @@ export default function Aulas() {
                 ? moduleRows.map((mod) => (
                     <ModuleSection
                       key={mod.id}
+                      mod={mod}
                       title={mod.title}
                       lessons={lessonsLocked.filter((l) => l.moduleId === mod.id)}
                       onPlay={handlePlay}
