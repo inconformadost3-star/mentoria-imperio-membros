@@ -217,6 +217,11 @@ button {
 .srd-app-shell {
   display: flex;
   height: 100vh;
+  /* 100dvh acompanha a altura visível de verdade no celular — no Safari do
+     iOS, a barra de endereço na parte de baixo some/aparece e o 100vh comum
+     não se ajusta a isso, fazendo nossa barra de baixo ficar por baixo/
+     junto da barra do navegador. */
+  height: 100dvh;
   background: var(--srd-bg);
 }
 
@@ -224,6 +229,7 @@ button {
   flex: 1;
   min-width: 0;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -250,10 +256,18 @@ button {
 
   .srd-mobile-topbar {
     display: flex;
+    /* !important porque o componente define padding inline, que senão
+       venceria essa regra e a barra ficaria embaixo do "notch"/câmera. */
+    padding-top: max(10px, env(safe-area-inset-top)) !important;
   }
 
   .srd-mobile-bottomnav {
     display: flex;
+    /* Dá espaço extra embaixo pra não ficar colado/por baixo da barrinha
+       de gestos do iPhone (ou da barra de endereço do navegador). */
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    height: auto;
+    min-height: 58px;
   }
 }
 

@@ -366,7 +366,7 @@ function Composer({ onPost, authorInitial, authorAvatarUrl, category, onCategory
         {mediaError && <div style={{ fontSize: 12.5, color: '#dc8290' }}>{mediaError}</div>}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <select
               value={category}
               onChange={(e) => onCategoryChange(e.target.value)}
