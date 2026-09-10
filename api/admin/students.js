@@ -33,7 +33,18 @@ export default async function handler(req, res) {
 
   const { data: userData, error: userError } = await admin.auth.getUser(token)
   if (userError || !userData?.user) {
-    res.status(401).json({ error: 'invalid token' })
+    // "invalid token" quase sempre é um destes dois motivos:
+    // 1) a sessão do navegador expirou/ficou velha (sair e entrar de novo resolve)
+    // 2) SUPABASE_URL/SUPABASE_SECRET_KEY na Vercel apontam pra um projeto
+    //    Supabase DIFERENTE do que VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY usam
+    //    no site (comum depois de recriar o projeto no Supabase) — um token
+    //    emitido pelo projeto certo nunca valida contra o projeto errado.
+    res.status(401).json({
+      error:
+        'invalid token' +
+        (userError?.message ? ` (${userError.message})` : '') +
+        ' — tente sair e entrar de novo; se continuar, confira se SUPABASE_URL na Vercel é do MESMO projeto Supabase que VITE_SUPABASE_URL',
+    })
     return
   }
 

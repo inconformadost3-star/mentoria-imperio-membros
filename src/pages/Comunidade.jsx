@@ -850,6 +850,29 @@ export default function Comunidade() {
     if (postCategory === activeTab) {
       setPosts((prev) => [mapRow({ ...data, post_likes: [{ count: 0 }], post_comments: [{ count: 0 }] }, new Set()), ...prev])
     }
+
+    // Aviso novo: manda notificação push de verdade (aparece na tela do
+    // celular de quem tiver ativado). Não trava o post se der erro — é só
+    // um "melhor esforço", o post já foi publicado normalmente.
+    if (postCategory === 'avisos') {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData.session?.access_token
+        if (token) {
+          fetch('/api/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              title: 'Novo aviso da Mentoria Império',
+              body: text.slice(0, 140),
+              url: '/comunidade',
+            }),
+          }).catch(() => {})
+        }
+      } catch (e) {
+        // silencioso
+      }
+    }
   }
 
   async function toggleLike(post) {

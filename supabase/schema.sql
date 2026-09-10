@@ -69,11 +69,18 @@ create index if not exists notifications_recipient_idx
 -- Módulos do curso (ex: "Módulo 0 - Passo zero"). Cada aula pertence a um
 -- módulo; module_order dentro de lessons vira a ordem da aula dentro do
 -- módulo, e module_order aqui é a ordem dos módulos entre si.
+-- unlock_after_days: liberação por dias corridos ("gotejamento" de
+-- conteúdo) — o módulo só fica disponível N dias depois que o aluno se
+-- cadastrou (profiles.created_at). Em branco/0 = liberado na hora. Uma
+-- aula com unlock_after_days preenchido usa o valor dela; se estiver em
+-- branco, herda o valor do módulo.
 create table if not exists public.modules (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   description text,
   module_order integer not null default 0,
+  cover_url text,
+  unlock_after_days integer,
   created_at timestamptz not null default now()
 );
 
@@ -90,6 +97,33 @@ create table if not exists public.lessons (
   module_id uuid references public.modules (id) on delete set null,
   module_order integer not null default 0,
   is_featured boolean not null default false,
+  cover_url text,
+  unlock_after_days integer,
+  created_at timestamptz not null default now()
+);
+
+-- Materiais extras de cada aula: links de sites e/ou anexos (arquivos) que
+-- você quiser deixar disponível junto da aula. url pode ser um link externo
+-- (site) digitado direto ou a URL pública de um arquivo subido pelo Painel
+-- admin (bucket "lesson-resources").
+create table if not exists public.lesson_resources (
+  id uuid primary key default gen_random_uuid(),
+  lesson_id uuid not null references public.lessons (id) on delete cascade,
+  title text not null,
+  url text not null,
+  resource_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- Inscrições de notificação push (uma linha por aparelho/navegador que
+-- autorizou notificações). Quem dispara o envio de verdade é a função de
+-- servidor api/send-push.js.
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
   created_at timestamptz not null default now()
 );
 
@@ -133,6 +167,8 @@ alter table public.post_likes enable row level security;
 alter table public.post_comments enable row level security;
 alter table public.lessons enable row level security;
 alter table public.modules enable row level security;
+alter table public.lesson_resources enable row level security;
+alter table public.push_subscriptions enable row level security;
 alter table public.lesson_progress enable row level security;
 alter table public.chat_messages enable row level security;
 alter table public.tool_projects enable row level security;
@@ -188,6 +224,8 @@ create policy "lessons: read all authenticated" on public.lessons
   for select using (auth.role() = 'authenticated');
 create policy "modules: read all authenticated" on public.modules
   for select using (auth.role() = 'authenticated');
+create policy "lesson_resources: read all authenticated" on public.lesson_resources
+  for select using (auth.role() = 'authenticated');
 
 -- Verifica se o usuário logado é administrador (marcado manualmente em
 -- profiles.is_admin). security definer faz essa função ler a tabela
@@ -218,6 +256,16 @@ create policy "modules: admin update" on public.modules
   for update using (public.is_admin()) with check (public.is_admin());
 create policy "modules: admin delete" on public.modules
   for delete using (public.is_admin());
+
+create policy "lesson_resources: admin insert" on public.lesson_resources
+  for insert with check (public.is_admin());
+create policy "lesson_resources: admin update" on public.lesson_resources
+  for update using (public.is_admin()) with check (public.is_admin());
+create policy "lesson_resources: admin delete" on public.lesson_resources
+  for delete using (public.is_admin());
+
+create policy "push_subscriptions: own rows" on public.push_subscriptions
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Só quem é admin pode publicar na aba "avisos" — nas demais abas qualquer
 -- aluno autenticado pode publicar na própria conta.
@@ -272,3 +320,33 @@ create policy "community-media: user insert own" on storage.objects
   for insert with check (bucket_id = 'community-media' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "community-media: user delete own" on storage.objects
   for delete using (bucket_id = 'community-media' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Capas personalizadas de aulas/módulos (bucket separado). Leitura pública
+-- (qualquer aluno vê a capa), mas só admin sobe/troca/apaga.
+insert into storage.buckets (id, name, public)
+values ('lesson-covers', 'lesson-covers', true)
+on conflict (id) do nothing;
+
+create policy "lesson-covers: public read" on storage.objects
+  for select using (bucket_id = 'lesson-covers');
+create policy "lesson-covers: admin insert" on storage.objects
+  for insert with check (bucket_id = 'lesson-covers' and public.is_admin());
+create policy "lesson-covers: admin update" on storage.objects
+  for update using (bucket_id = 'lesson-covers' and public.is_admin());
+create policy "lesson-covers: admin delete" on storage.objects
+  for delete using (bucket_id = 'lesson-covers' and public.is_admin());
+
+-- Anexos/materiais das aulas (PDFs, planilhas, o que for) — upload só pelo
+-- Painel admin, leitura pública (link some no material da aula).
+insert into storage.buckets (id, name, public)
+values ('lesson-resources', 'lesson-resources', true)
+on conflict (id) do nothing;
+
+create policy "lesson-resources: public read" on storage.objects
+  for select using (bucket_id = 'lesson-resources');
+create policy "lesson-resources: admin insert" on storage.objects
+  for insert with check (bucket_id = 'lesson-resources' and public.is_admin());
+create policy "lesson-resources: admin update" on storage.objects
+  for update using (bucket_id = 'lesson-resources' and public.is_admin());
+create policy "lesson-resources: admin delete" on storage.objects
+  for delete using (bucket_id = 'lesson-resources' and public.is_admin());

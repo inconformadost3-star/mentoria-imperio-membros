@@ -1,6 +1,12 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthProvider.jsx'
+import {
+  isPushSupported,
+  getExistingPushSubscription,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '../lib/pushNotifications.js'
 
 function Field({ label, value, onChange, type = 'text', disabled = false }) {
   return (
@@ -134,6 +140,40 @@ export default function Ajustes() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+
+  useEffect(() => {
+    if (!configured) return
+    getExistingPushSubscription().then((sub) => setPushEnabled(!!sub))
+  }, [configured])
+
+  async function handleTogglePush(next) {
+    if (!configured || !user) {
+      setPushEnabled(next)
+      return
+    }
+    setPushBusy(true)
+    setError('')
+    if (next) {
+      const result = await subscribeToPush(user.id)
+      if (result.ok) {
+        setPushEnabled(true)
+      } else if (result.reason === 'unsupported') {
+        setError('Seu navegador não suporta notificações push.')
+      } else if (result.reason === 'denied') {
+        setError('Você bloqueou a permissão de notificações — precisa liberar nas configurações do navegador/celular.')
+      } else if (result.reason === 'not-configured') {
+        setError('Notificações push ainda não foram configuradas neste site.')
+      } else {
+        setError('Não consegui ativar as notificações: ' + (result.reason || 'erro desconhecido'))
+      }
+    } else {
+      await unsubscribeFromPush()
+      setPushEnabled(false)
+    }
+    setPushBusy(false)
+  }
 
   const email = configured ? user?.email || '' : 'bia@exemplo.com'
   const displayName = configured ? name || profile?.name || '' : name || 'Bia'
@@ -254,6 +294,15 @@ export default function Ajustes() {
           checked={communityNotif}
           onChange={setCommunityNotif}
         />
+        {configured && isPushSupported() && (
+          <Toggle
+            label="Notificações no celular"
+            description="Avisos novos aparecem direto na tela do celular, como as notificações de qualquer outro app (funciona melhor com o site adicionado à tela de início)."
+            checked={pushEnabled}
+            onChange={handleTogglePush}
+          />
+        )}
+        {pushBusy && <div style={{ fontSize: 12, color: '#8f8577', paddingTop: 6 }}>Um instante…</div>}
       </div>
 
       {error && <div style={{ fontSize: 13, color: '#dc8290', marginBottom: 16 }}>{error}</div>}
