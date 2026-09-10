@@ -579,23 +579,29 @@ export default function Aulas() {
         </div>
       ) : (
         <>
-          <div
-            className="srd-card"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              padding: '14px 20px',
-              marginBottom: 24,
-              background: 'var(--srd-gold-soft)',
-              border: '1px solid var(--srd-gold-border)',
-            }}
-          >
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#e8bd6e' }}>Comece aqui</span>
-            <span style={{ fontSize: 13, color: '#d8cfc2' }}>
-              Assista à aula de boas-vindas antes de seguir para os módulos abaixo.
-            </span>
-          </div>
+          {/* O selo "Comece aqui" já vem dentro do banner da aula em destaque
+              logo abaixo — só mostra esse aviso em texto se não tiver
+              nenhuma aula marcada como destaque (senão fica repetido). */}
+          {!featuredLocked && (
+            <div
+              className="srd-card"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                padding: '14px 20px',
+                marginBottom: 24,
+                background: 'var(--srd-gold-soft)',
+                border: '1px solid var(--srd-gold-border)',
+              }}
+            >
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: '#e8bd6e' }}>Comece aqui</span>
+              <span style={{ fontSize: 13, color: '#d8cfc2' }}>
+                Marque uma aula como "Aula em destaque" no Painel admin pra ela aparecer aqui em banner,
+                bem no topo, antes dos módulos abaixo.
+              </span>
+            </div>
+          )}
 
           {featuredLocked && (
             <button
