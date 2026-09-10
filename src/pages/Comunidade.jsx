@@ -720,7 +720,7 @@ export default function Comunidade() {
   const authorAvatarUrl = profile?.avatar_url || null
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 24px' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
       <div style={{ marginBottom: 24, textAlign: 'center' }}>
         <div style={{ fontSize: 26, fontWeight: 700, color: '#f5f1ea' }}>Comunidade</div>
         <div

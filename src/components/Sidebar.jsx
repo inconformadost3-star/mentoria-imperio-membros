@@ -36,7 +36,7 @@ const MOBILE_TAB_ITEMS = NAV_MEMBROS.filter((item) => !item.external)
 const rowBaseStyle = {
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center',
+  justifyContent: 'flex-start',
   gap: 10,
   padding: '9px 14px',
   borderRadius: 12,
