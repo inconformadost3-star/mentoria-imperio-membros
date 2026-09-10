@@ -50,6 +50,22 @@ create table if not exists public.post_comments (
   created_at timestamptz not null default now()
 );
 
+-- Notificações: alguém curtiu ou comentou no seu post.
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  recipient_id uuid not null references public.profiles (id) on delete cascade,
+  actor_id uuid not null references public.profiles (id) on delete cascade,
+  type text not null check (type in ('like', 'comment')),
+  post_id uuid not null references public.posts (id) on delete cascade,
+  category text not null,
+  preview text,
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+
+create index if not exists notifications_recipient_idx
+  on public.notifications (recipient_id, created_at desc);
+
 -- Módulos do curso (ex: "Módulo 0 - Passo zero"). Cada aula pertence a um
 -- módulo; module_order dentro de lessons vira a ordem da aula dentro do
 -- módulo, e module_order aqui é a ordem dos módulos entre si.
@@ -121,6 +137,7 @@ alter table public.lesson_progress enable row level security;
 alter table public.chat_messages enable row level security;
 alter table public.tool_projects enable row level security;
 alter table public.community_reads enable row level security;
+alter table public.notifications enable row level security;
 
 -- profiles: qualquer aluno logado pode LER o nome de qualquer outro aluno
 -- (precisa disso pra mostrar o autor de cada post da comunidade), mas só
@@ -151,6 +168,16 @@ create policy "post_comments: read all authenticated" on public.post_comments
   for select using (auth.role() = 'authenticated');
 create policy "post_comments: insert own" on public.post_comments
   for insert with check (auth.uid() = author_id);
+
+-- notifications: cada um só lê e marca como lida as próprias notificações;
+-- só pode criar notificação como "ator" dela mesma, e nunca pra si mesma
+-- (curtir/comentar o próprio post não gera notificação).
+create policy "notifications: read own" on public.notifications
+  for select using (recipient_id = auth.uid());
+create policy "notifications: insert as self" on public.notifications
+  for insert with check (actor_id = auth.uid() and recipient_id <> auth.uid());
+create policy "notifications: mark own as read" on public.notifications
+  for update using (recipient_id = auth.uid()) with check (recipient_id = auth.uid());
 create policy "post_comments: delete own" on public.post_comments
   for delete using (auth.uid() = author_id);
 

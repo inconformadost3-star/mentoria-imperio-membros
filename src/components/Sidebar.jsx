@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthProvider.jsx'
 import logoWordmark from '../assets/logo-imperio-wordmark.png'
 import logoFull from '../assets/logo-imperio-full.png'
+import NotificationBell from './NotificationBell.jsx'
 import {
   IconFerramenta,
   IconComunidade,
@@ -210,18 +211,21 @@ export function MobileTopBar() {
       }}
     >
       <img src={logoFull} alt="Mentoria Império" style={{ height: 26, width: 'auto', display: 'block' }} />
-      <NavLink to="/ajustes" style={{ display: 'flex' }}>
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: '50%',
-            background: profile?.avatar_url
-              ? `center / cover no-repeat url(${profile.avatar_url})`
-              : 'linear-gradient(135deg,#f3d386,#c8862c)',
-          }}
-        />
-      </NavLink>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <NotificationBell />
+        <NavLink to="/ajustes" style={{ display: 'flex' }}>
+          <div
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: '50%',
+              background: profile?.avatar_url
+                ? `center / cover no-repeat url(${profile.avatar_url})`
+                : 'linear-gradient(135deg,#f3d386,#c8862c)',
+            }}
+          />
+        </NavLink>
+      </div>
     </header>
   )
 }

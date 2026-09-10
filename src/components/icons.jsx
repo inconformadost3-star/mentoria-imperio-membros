@@ -141,6 +141,15 @@ export function IconLogout({ size = 16, color = 'currentColor' }) {
   )
 }
 
+export function IconBell({ size = 18, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...base}>
+      <path d="M6 10a6 6 0 1 1 12 0c0 4 1.3 5.5 2 6.5H4c.7-1 2-2.5 2-6.5Z" />
+      <path d="M10 19.5a2 2 0 0 0 4 0" />
+    </svg>
+  )
+}
+
 export function IconTrash({ size = 14, color = 'currentColor' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...base}>

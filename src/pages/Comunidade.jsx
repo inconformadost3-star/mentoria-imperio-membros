@@ -68,11 +68,13 @@ function mediaTypeFor(file) {
 function mapRow(row, likedIds) {
   return {
     id: row.id,
+    authorId: row.author_id,
     author: row.profiles?.name || 'Aluno',
     initial: (row.profiles?.name || 'A').charAt(0).toUpperCase(),
     avatarUrl: row.profiles?.avatar_url || null,
     time: timeAgo(row.created_at),
     text: row.content,
+    category: row.category,
     mediaUrl: row.media_url || null,
     mediaType: row.media_type || null,
     likes: row.post_likes?.[0]?.count ?? 0,
@@ -452,6 +454,167 @@ function Composer({ onPost, authorInitial, authorAvatarUrl, category, onCategory
   )
 }
 
+function CommentRow({ comment }) {
+  return (
+    <div style={{ display: 'flex', gap: 10, padding: '7px 0' }}>
+      <Avatar initial={comment.initial} avatarUrl={comment.avatarUrl} size={26} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#f5f1ea' }}>{comment.author}</span>
+          <span style={{ fontSize: 11, color: '#8f8577' }}>{comment.time}</span>
+        </div>
+        <p style={{ fontSize: 13, color: '#d8cfc2', margin: '2px 0 0', lineHeight: 1.45 }}>{comment.text}</p>
+      </div>
+    </div>
+  )
+}
+
+function CommentsSection({ post }) {
+  const { user, profile } = useAuth()
+  const [open, setOpen] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [comments, setComments] = useState([])
+  const [value, setValue] = useState('')
+  const [sending, setSending] = useState(false)
+
+  async function toggleOpen() {
+    const next = !open
+    setOpen(next)
+    if (next && !loaded && isSupabaseConfigured) {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select('id, content, created_at, author_id, profiles!author_id(name, avatar_url)')
+        .eq('post_id', post.id)
+        .order('created_at', { ascending: true })
+      if (!error) {
+        setComments(
+          (data ?? []).map((row) => ({
+            id: row.id,
+            author: row.profiles?.name || 'Aluno',
+            initial: (row.profiles?.name || 'A').charAt(0).toUpperCase(),
+            avatarUrl: row.profiles?.avatar_url || null,
+            text: row.content,
+            time: timeAgo(row.created_at),
+          }))
+        )
+      }
+      setLoaded(true)
+      setLoading(false)
+    }
+  }
+
+  async function submitComment() {
+    const text = value.trim()
+    if (!text || sending) return
+    setSending(true)
+    try {
+      if (!isSupabaseConfigured) {
+        setComments((prev) => [...prev, { id: `local-${Date.now()}`, author: 'Bia', initial: 'B', avatarUrl: null, text, time: 'agora' }])
+        setValue('')
+        return
+      }
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert({ post_id: post.id, author_id: user.id, content: text })
+        .select('id, content, created_at, author_id, profiles!author_id(name, avatar_url)')
+        .single()
+      if (error) return
+      setComments((prev) => [
+        ...prev,
+        {
+          id: data.id,
+          author: data.profiles?.name || 'Aluno',
+          initial: (data.profiles?.name || 'A').charAt(0).toUpperCase(),
+          avatarUrl: data.profiles?.avatar_url || null,
+          text: data.content,
+          time: 'agora',
+        },
+      ])
+      setValue('')
+      if (post.authorId && post.authorId !== user.id) {
+        await supabase.from('notifications').insert({
+          recipient_id: post.authorId,
+          actor_id: user.id,
+          type: 'comment',
+          post_id: post.id,
+          category: post.category,
+          preview: text.slice(0, 140),
+        })
+      }
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={toggleOpen}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          background: 'none',
+          border: 'none',
+          color: '#8f8577',
+          fontSize: 13,
+          fontWeight: 600,
+          padding: 0,
+        }}
+      >
+        <IconComment />
+        {loaded ? comments.length : post.comments}
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10 }}>
+          {loading && <div style={{ fontSize: 12.5, color: '#8f8577' }}>Carregando comentários…</div>}
+          {!loading && comments.length === 0 && (
+            <div style={{ fontSize: 12.5, color: '#8f8577' }}>Nenhum comentário ainda. Seja a primeira a comentar!</div>
+          )}
+          {comments.map((c) => (
+            <CommentRow key={c.id} comment={c} />
+          ))}
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <Avatar initial={(profile?.name || 'B').charAt(0).toUpperCase()} avatarUrl={profile?.avatar_url || null} size={26} />
+            <input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitComment()
+              }}
+              placeholder="Escreva um comentário…"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 999,
+                color: '#f5f1ea',
+                fontFamily: 'inherit',
+                fontSize: 13,
+                padding: '7px 12px',
+                outline: 'none',
+              }}
+            />
+            <button
+              onClick={submitComment}
+              disabled={sending || !value.trim()}
+              className="srd-btn-gold"
+              style={{ padding: '7px 14px', fontSize: 12.5, opacity: sending || !value.trim() ? 0.6 : 1 }}
+            >
+              Enviar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Post({ post, onToggleLike }) {
   const [busy, setBusy] = useState(false)
 
@@ -518,22 +681,10 @@ function Post({ post, onToggleLike }) {
               <IconHeart color={post.liked ? '#e8bd6e' : '#8f8577'} />
               {post.likes}
             </button>
-            <button
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'none',
-                border: 'none',
-                color: '#8f8577',
-                fontSize: 13,
-                fontWeight: 600,
-                padding: 0,
-              }}
-            >
-              <IconComment />
-              {post.comments}
-            </button>
+          </div>
+
+          <div style={{ marginTop: 10 }}>
+            <CommentsSection post={post} />
           </div>
         </div>
       </div>
@@ -659,9 +810,17 @@ export default function Comunidade() {
       mediaType = mediaTypeFor(mediaFile)
       const ext = mediaFile.name.includes('.') ? mediaFile.name.split('.').pop() : 'bin'
       const path = `${user.id}/${Date.now()}.${ext}`
+      // No Safari do iPhone, mandar o File direto pro Supabase às vezes dá
+      // erro "No content provided" (o corpo da requisição chega vazio).
+      // Ler o arquivo como ArrayBuffer antes de enviar resolve isso.
+      const fileBuffer = await mediaFile.arrayBuffer()
       const { error: uploadError } = await supabase.storage
         .from('community-media')
-        .upload(path, mediaFile, { upsert: false, cacheControl: '3600', contentType: mediaFile.type || undefined })
+        .upload(path, fileBuffer, {
+          upsert: false,
+          cacheControl: '3600',
+          contentType: mediaFile.type || 'application/octet-stream',
+        })
       if (uploadError) {
         // eslint-disable-next-line no-console
         console.error('[Império] Erro upload mídia:', uploadError)
@@ -703,16 +862,27 @@ export default function Comunidade() {
       return
     }
 
+    const wasLiked = post.liked
     setPosts((prev) =>
       prev.map((p) =>
         p.id === post.id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p
       )
     )
 
-    if (post.liked) {
+    if (wasLiked) {
       await supabase.from('post_likes').delete().eq('post_id', post.id).eq('user_id', user.id)
     } else {
       await supabase.from('post_likes').insert({ post_id: post.id, user_id: user.id })
+      if (post.authorId && post.authorId !== user.id) {
+        await supabase.from('notifications').insert({
+          recipient_id: post.authorId,
+          actor_id: user.id,
+          type: 'like',
+          post_id: post.id,
+          category: post.category,
+          preview: post.text ? post.text.slice(0, 140) : null,
+        })
+      }
     }
   }
 

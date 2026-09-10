@@ -247,6 +247,15 @@ button {
   display: none;
 }
 
+/* Sino de notificações flutuando no canto superior direito, só no
+   computador — no celular ele já mora dentro da barra de cima. */
+.srd-notif-desktop {
+  position: fixed;
+  top: 18px;
+  right: 24px;
+  z-index: 40;
+}
+
 @media (max-width: 720px) {
   .srd-sidebar-desktop {
     /* !important porque o componente também define display inline (flex),
@@ -268,6 +277,10 @@ button {
     padding-bottom: max(6px, env(safe-area-inset-bottom));
     height: auto;
     min-height: 58px;
+  }
+
+  .srd-notif-desktop {
+    display: none;
   }
 }
 
