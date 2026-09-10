@@ -50,14 +50,28 @@ create table if not exists public.post_comments (
   created_at timestamptz not null default now()
 );
 
+-- Módulos do curso (ex: "Módulo 0 - Passo zero"). Cada aula pertence a um
+-- módulo; module_order dentro de lessons vira a ordem da aula dentro do
+-- módulo, e module_order aqui é a ordem dos módulos entre si.
+create table if not exists public.modules (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  module_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
 -- Aulas (catálogo) — o vídeo em si fica hospedado no YouTube, aqui só
--- guardamos metadados e o ID do vídeo.
+-- guardamos metadados e o ID do vídeo. youtube_id pode ficar vazio pra
+-- cadastrar a estrutura do curso antes de gravar (a aula aparece como
+-- "em breve" pro aluno).
 create table if not exists public.lessons (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   description text,
-  youtube_id text not null,
+  youtube_id text,
   duration_seconds integer,
+  module_id uuid references public.modules (id) on delete set null,
   module_order integer not null default 0,
   is_featured boolean not null default false,
   created_at timestamptz not null default now()
@@ -102,6 +116,7 @@ alter table public.posts enable row level security;
 alter table public.post_likes enable row level security;
 alter table public.post_comments enable row level security;
 alter table public.lessons enable row level security;
+alter table public.modules enable row level security;
 alter table public.lesson_progress enable row level security;
 alter table public.chat_messages enable row level security;
 alter table public.tool_projects enable row level security;
@@ -144,6 +159,8 @@ create policy "post_comments: delete own" on public.post_comments
 -- client aqui de propósito).
 create policy "lessons: read all authenticated" on public.lessons
   for select using (auth.role() = 'authenticated');
+create policy "modules: read all authenticated" on public.modules
+  for select using (auth.role() = 'authenticated');
 
 -- Verifica se o usuário logado é administrador (marcado manualmente em
 -- profiles.is_admin). security definer faz essa função ler a tabela
@@ -166,6 +183,13 @@ create policy "lessons: admin insert" on public.lessons
 create policy "lessons: admin update" on public.lessons
   for update using (public.is_admin()) with check (public.is_admin());
 create policy "lessons: admin delete" on public.lessons
+  for delete using (public.is_admin());
+
+create policy "modules: admin insert" on public.modules
+  for insert with check (public.is_admin());
+create policy "modules: admin update" on public.modules
+  for update using (public.is_admin()) with check (public.is_admin());
+create policy "modules: admin delete" on public.modules
   for delete using (public.is_admin());
 
 -- Só quem é admin pode publicar na aba "avisos" — nas demais abas qualquer

@@ -37,8 +37,16 @@ const emptyLessonForm = {
   description: '',
   youtube_id: '',
   duration_seconds: '',
+  module_id: '',
   module_order: 0,
   is_featured: false,
+}
+
+const emptyModuleForm = {
+  id: null,
+  title: '',
+  description: '',
+  module_order: 0,
 }
 
 function Field({ label, children }) {
@@ -51,23 +59,29 @@ function Field({ label, children }) {
 }
 
 function AulasAdmin() {
+  const [modulesList, setModulesList] = useState([])
   const [lessons, setLessons] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [form, setForm] = useState(emptyLessonForm)
   const [saving, setSaving] = useState(false)
+  const [moduleForm, setModuleForm] = useState(emptyModuleForm)
+  const [savingModule, setSavingModule] = useState(false)
 
   async function load() {
     setLoading(true)
     setError('')
-    const { data, error: err } = await supabase
-      .from('lessons')
-      .select('*')
-      .order('module_order', { ascending: true })
-    if (err) {
-      setError('Não consegui carregar as aulas: ' + err.message)
+    const [modulesRes, lessonsRes] = await Promise.all([
+      supabase.from('modules').select('*').order('module_order', { ascending: true }),
+      supabase.from('lessons').select('*').order('module_order', { ascending: true }),
+    ])
+    if (modulesRes.error) {
+      setError('Não consegui carregar os módulos: ' + modulesRes.error.message)
+    } else if (lessonsRes.error) {
+      setError('Não consegui carregar as aulas: ' + lessonsRes.error.message)
     } else {
-      setLessons(data ?? [])
+      setModulesList(modulesRes.data ?? [])
+      setLessons(lessonsRes.data ?? [])
     }
     setLoading(false)
   }
@@ -83,6 +97,7 @@ function AulasAdmin() {
       description: lesson.description || '',
       youtube_id: lesson.youtube_id || '',
       duration_seconds: lesson.duration_seconds ?? '',
+      module_id: lesson.module_id || '',
       module_order: lesson.module_order ?? 0,
       is_featured: !!lesson.is_featured,
     })
@@ -90,15 +105,16 @@ function AulasAdmin() {
 
   async function submit(e) {
     e.preventDefault()
-    if (!form.title.trim() || !form.youtube_id.trim()) return
+    if (!form.title.trim()) return
     setSaving(true)
     setError('')
 
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || null,
-      youtube_id: form.youtube_id.trim(),
+      youtube_id: form.youtube_id.trim() || null,
       duration_seconds: form.duration_seconds === '' ? null : Number(form.duration_seconds),
+      module_id: form.module_id || null,
       module_order: Number(form.module_order) || 0,
       is_featured: form.is_featured,
     }
@@ -126,111 +142,108 @@ function AulasAdmin() {
     }
   }
 
+  function editModule(mod) {
+    setModuleForm({
+      id: mod.id,
+      title: mod.title || '',
+      description: mod.description || '',
+      module_order: mod.module_order ?? 0,
+    })
+  }
+
+  async function submitModule(e) {
+    e.preventDefault()
+    if (!moduleForm.title.trim()) return
+    setSavingModule(true)
+    setError('')
+
+    const payload = {
+      title: moduleForm.title.trim(),
+      description: moduleForm.description.trim() || null,
+      module_order: Number(moduleForm.module_order) || 0,
+    }
+
+    const { error: err } = moduleForm.id
+      ? await supabase.from('modules').update(payload).eq('id', moduleForm.id)
+      : await supabase.from('modules').insert(payload)
+
+    if (err) {
+      setError('Não consegui salvar o módulo: ' + err.message)
+    } else {
+      setModuleForm(emptyModuleForm)
+      await load()
+    }
+    setSavingModule(false)
+  }
+
+  async function removeModule(id) {
+    if (!window.confirm('Apagar esse módulo? As aulas dele não são apagadas, só ficam sem módulo.')) return
+    const { error: err } = await supabase.from('modules').delete().eq('id', id)
+    if (err) {
+      setError('Não consegui apagar: ' + err.message)
+    } else {
+      await load()
+    }
+  }
+
+  const lessonsWithoutModule = lessons.filter((l) => !l.module_id)
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <form onSubmit={submit} className="srd-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#f5f1ea' }}>
-          {form.id ? 'Editar aula' : 'Nova aula'}
-        </div>
-        <Field label="Título">
-          <input
-            style={inputStyle}
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            placeholder="Ex: Módulo 1 — Introdução"
-          />
-        </Field>
-        <Field label="Descrição (opcional, só aparece na aula em destaque)">
-          <textarea
-            style={{ ...inputStyle, resize: 'vertical', minHeight: 60 }}
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          />
-        </Field>
-        <Field label="ID do vídeo no YouTube (a parte depois de v= na URL)">
-          <input
-            style={inputStyle}
-            value={form.youtube_id}
-            onChange={(e) => setForm((f) => ({ ...f, youtube_id: e.target.value }))}
-            placeholder="Ex: dQw4w9WgXcQ"
-          />
-        </Field>
-        <div style={{ display: 'flex', gap: 14 }}>
-          <div style={{ flex: 1 }}>
-            <Field label="Duração em segundos (opcional)">
-              <input
-                type="number"
-                style={inputStyle}
-                value={form.duration_seconds}
-                onChange={(e) => setForm((f) => ({ ...f, duration_seconds: e.target.value }))}
-              />
-            </Field>
-          </div>
-          <div style={{ flex: 1 }}>
-            <Field label="Ordem (1, 2, 3…)">
-              <input
-                type="number"
-                style={inputStyle}
-                value={form.module_order}
-                onChange={(e) => setForm((f) => ({ ...f, module_order: e.target.value }))}
-              />
-            </Field>
-          </div>
-        </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#d8cfc2' }}>
-          <input
-            type="checkbox"
-            checked={form.is_featured}
-            onChange={(e) => setForm((f) => ({ ...f, is_featured: e.target.checked }))}
-          />
-          Aula em destaque (aparece no topo da página de Aulas)
-        </label>
-
-        {error && <div style={{ fontSize: 13, color: '#dc8290' }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button type="submit" className="srd-btn-gold" disabled={saving}>
-            {saving ? 'Salvando…' : form.id ? 'Salvar edição' : 'Adicionar aula'}
-          </button>
-          {form.id && (
-            <button type="button" className="srd-btn-outline" onClick={() => setForm(emptyLessonForm)}>
-              Cancelar edição
-            </button>
-          )}
-        </div>
-      </form>
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#f5f1ea', marginBottom: 12 }}>
-          Aulas cadastradas
-        </div>
-        {loading ? (
-          <div style={{ fontSize: 13, color: '#8f8577' }}>Carregando…</div>
-        ) : lessons.length === 0 ? (
-          <div style={{ fontSize: 13, color: '#8f8577' }}>Nenhuma aula cadastrada ainda.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {lessons.map((lesson) => (
-              <div
-                key={lesson.id}
-                className="srd-card"
-                style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: '#f5f1ea' }}>
-                    {lesson.module_order}. {lesson.title}
-                    {lesson.is_featured && (
-                      <span style={{ marginLeft: 8, fontSize: 11, color: '#e8bd6e' }}>★ destaque</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#8f8577', marginTop: 2 }}>{lesson.youtube_id}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#f5f1ea', marginBottom: 12 }}>Módulos</div>
+        <form onSubmit={submitModule} className="srd-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#f5f1ea' }}>
+            {moduleForm.id ? 'Editar módulo' : 'Novo módulo'}
+          </div>
+          <Field label="Título do módulo">
+            <input
+              style={inputStyle}
+              value={moduleForm.title}
+              onChange={(e) => setModuleForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="Ex: Módulo 0 - Passo zero"
+            />
+          </Field>
+          <Field label="Descrição (opcional)">
+            <textarea
+              style={{ ...inputStyle, resize: 'vertical', minHeight: 50 }}
+              value={moduleForm.description}
+              onChange={(e) => setModuleForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </Field>
+          <Field label="Ordem (0, 1, 2…)">
+            <input
+              type="number"
+              style={{ ...inputStyle, maxWidth: 140 }}
+              value={moduleForm.module_order}
+              onChange={(e) => setModuleForm((f) => ({ ...f, module_order: e.target.value }))}
+            />
+          </Field>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="submit" className="srd-btn-gold" disabled={savingModule}>
+              {savingModule ? 'Salvando…' : moduleForm.id ? 'Salvar edição' : 'Adicionar módulo'}
+            </button>
+            {moduleForm.id && (
+              <button type="button" className="srd-btn-outline" onClick={() => setModuleForm(emptyModuleForm)}>
+                Cancelar edição
+              </button>
+            )}
+          </div>
+        </form>
+
+        {!loading && modulesList.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {modulesList.map((mod) => (
+              <div key={mod.id} className="srd-card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#f5f1ea' }}>
+                  {mod.module_order}. {mod.title}
                 </div>
-                <button className="srd-btn-outline" onClick={() => editLesson(lesson)} style={{ padding: '7px 14px' }}>
+                <button className="srd-btn-outline" onClick={() => editModule(mod)} style={{ padding: '6px 12px', fontSize: 12.5 }}>
                   Editar
                 </button>
                 <button
-                  onClick={() => remove(lesson.id)}
-                  title="Apagar aula"
+                  onClick={() => removeModule(mod.id)}
+                  title="Apagar módulo"
                   style={{ background: 'none', border: 'none', color: '#dc8290', padding: 6 }}
                 >
                   <IconTrash />
@@ -240,6 +253,160 @@ function AulasAdmin() {
           </div>
         )}
       </div>
+
+      <div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#f5f1ea', marginBottom: 12 }}>Aulas</div>
+        <form onSubmit={submit} className="srd-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#f5f1ea' }}>
+            {form.id ? 'Editar aula' : 'Nova aula'}
+          </div>
+          <Field label="Módulo">
+            <select
+              style={inputStyle}
+              value={form.module_id}
+              onChange={(e) => setForm((f) => ({ ...f, module_id: e.target.value }))}
+            >
+              <option value="">— sem módulo —</option>
+              {modulesList.map((mod) => (
+                <option key={mod.id} value={mod.id}>
+                  {mod.title}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Título">
+            <input
+              style={inputStyle}
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="Ex: Introdução ao sistema, a IA"
+            />
+          </Field>
+          <Field label="Descrição (opcional, só aparece na aula em destaque)">
+            <textarea
+              style={{ ...inputStyle, resize: 'vertical', minHeight: 60 }}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </Field>
+          <Field label="ID do vídeo no YouTube (opcional — deixe em branco se ainda não gravou; a aula aparece como 'Em breve' até você preencher)">
+            <input
+              style={inputStyle}
+              value={form.youtube_id}
+              onChange={(e) => setForm((f) => ({ ...f, youtube_id: e.target.value }))}
+              placeholder="Ex: dQw4w9WgXcQ"
+            />
+          </Field>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <div style={{ flex: 1 }}>
+              <Field label="Duração em segundos (opcional)">
+                <input
+                  type="number"
+                  style={inputStyle}
+                  value={form.duration_seconds}
+                  onChange={(e) => setForm((f) => ({ ...f, duration_seconds: e.target.value }))}
+                />
+              </Field>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Field label="Ordem dentro do módulo (1, 2, 3…)">
+                <input
+                  type="number"
+                  style={inputStyle}
+                  value={form.module_order}
+                  onChange={(e) => setForm((f) => ({ ...f, module_order: e.target.value }))}
+                />
+              </Field>
+            </div>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#d8cfc2' }}>
+            <input
+              type="checkbox"
+              checked={form.is_featured}
+              onChange={(e) => setForm((f) => ({ ...f, is_featured: e.target.checked }))}
+            />
+            Aula em destaque (aparece no topo da página de Aulas)
+          </label>
+
+          {error && <div style={{ fontSize: 13, color: '#dc8290' }}>{error}</div>}
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="submit" className="srd-btn-gold" disabled={saving}>
+              {saving ? 'Salvando…' : form.id ? 'Salvar edição' : 'Adicionar aula'}
+            </button>
+            {form.id && (
+              <button type="button" className="srd-btn-outline" onClick={() => setForm(emptyLessonForm)}>
+                Cancelar edição
+              </button>
+            )}
+          </div>
+        </form>
+
+        {loading ? (
+          <div style={{ fontSize: 13, color: '#8f8577' }}>Carregando…</div>
+        ) : lessons.length === 0 ? (
+          <div style={{ fontSize: 13, color: '#8f8577' }}>Nenhuma aula cadastrada ainda.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+            {modulesList.map((mod) => {
+              const modLessons = lessons.filter((l) => l.module_id === mod.id)
+              if (modLessons.length === 0) return null
+              return (
+                <div key={mod.id}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#e8bd6e', marginBottom: 8 }}>
+                    {mod.title}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {modLessons.map((lesson) => (
+                      <LessonRow key={lesson.id} lesson={lesson} onEdit={editLesson} onRemove={remove} />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+            {lessonsWithoutModule.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#8f8577', marginBottom: 8 }}>
+                  Sem módulo
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {lessonsWithoutModule.map((lesson) => (
+                    <LessonRow key={lesson.id} lesson={lesson} onEdit={editLesson} onRemove={remove} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function LessonRow({ lesson, onEdit, onRemove }) {
+  return (
+    <div className="srd-card" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: '#f5f1ea' }}>
+          {lesson.module_order}. {lesson.title}
+          {lesson.is_featured && (
+            <span style={{ marginLeft: 8, fontSize: 11, color: '#e8bd6e' }}>★ destaque</span>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: lesson.youtube_id ? '#8f8577' : '#dc8290', marginTop: 2 }}>
+          {lesson.youtube_id || 'sem vídeo ainda (aparece como "Em breve")'}
+        </div>
+      </div>
+      <button className="srd-btn-outline" onClick={() => onEdit(lesson)} style={{ padding: '7px 14px' }}>
+        Editar
+      </button>
+      <button
+        onClick={() => onRemove(lesson.id)}
+        title="Apagar aula"
+        style={{ background: 'none', border: 'none', color: '#dc8290', padding: 6 }}
+      >
+        <IconTrash />
+      </button>
     </div>
   )
 }

@@ -209,3 +209,64 @@ button {
     animation: none !important;
   }
 }
+
+/* ============================================================
+   Layout responsivo — sidebar completa no computador, barra de
+   navegação em cima/embaixo (estilo app) no celular.
+   ============================================================ */
+.srd-app-shell {
+  display: flex;
+  height: 100vh;
+  background: var(--srd-bg);
+}
+
+.srd-app-main-wrap {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.srd-app-main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.srd-mobile-topbar {
+  display: none;
+}
+
+.srd-mobile-bottomnav {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .srd-sidebar-desktop {
+    /* !important porque o componente também define display inline (flex),
+       que senão venceria a regra daqui e a sidebar nunca escondería. */
+    display: none !important;
+  }
+
+  .srd-mobile-topbar {
+    display: flex;
+  }
+
+  .srd-mobile-bottomnav {
+    display: flex;
+  }
+}
+
+/* Aula em destaque: no computador fica lado a lado (thumb + texto); no
+   celular empilha, senão a coluna com minWidth fixo estoura a tela. */
+@media (max-width: 640px) {
+  .srd-featured-card {
+    flex-direction: column !important;
+  }
+
+  .srd-featured-thumb {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+

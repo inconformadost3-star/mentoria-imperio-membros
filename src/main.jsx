@@ -15,3 +15,11 @@ createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </StrictMode>,
 )
+
+// Permite "Instalar app" no celular (Add to Home Screen). Não faz cache de
+// nada, só existe pra o navegador considerar o site instalável.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}

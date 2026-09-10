@@ -1,13 +1,17 @@
 import { Outlet } from 'react-router-dom'
-import Sidebar from './Sidebar.jsx'
+import Sidebar, { MobileTopBar, MobileBottomNav } from './Sidebar.jsx'
 
 export default function Layout() {
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--srd-bg)' }}>
+    <div className="srd-app-shell">
       <Sidebar userName="Bia" />
-      <main style={{ flex: 1, overflowY: 'auto' }}>
-        <Outlet />
-      </main>
+      <div className="srd-app-main-wrap">
+        <MobileTopBar />
+        <main className="srd-app-main">
+          <Outlet />
+        </main>
+        <MobileBottomNav />
+      </div>
     </div>
   )
 }
