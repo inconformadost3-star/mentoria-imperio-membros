@@ -1,0 +1,211 @@
+/* ============================================================
+   SRD — Design tokens
+   Baseados na identidade visual real do Sistema de Renda Digital:
+   fundo quase-preto quente, cards arredondados, dourado em gradiente,
+   fonte Quicksand.
+   ============================================================ */
+:root {
+  --srd-bg: #1a150f;
+  --srd-bg-panel: #17130e;
+  --srd-bg-card: #221c15;
+  --srd-bg-card-hover: #2a2319;
+  --srd-border: rgba(255, 255, 255, 0.06);
+  --srd-border-strong: rgba(255, 255, 255, 0.1);
+
+  --srd-text: #f5f1ea;
+  --srd-text-secondary: #a89f92;
+  --srd-text-tertiary: #8f8577;
+  --srd-text-faint: #6e6355;
+
+  --srd-gold: #e8bd6e;
+  --srd-gold-soft: rgba(232, 189, 110, 0.12);
+  --srd-gold-border: rgba(232, 189, 110, 0.3);
+  --srd-gold-gradient: linear-gradient(135deg, #f3d386, #c8862c);
+
+  --srd-success: #7fb69e;
+  --srd-success-soft: rgba(127, 182, 158, 0.14);
+
+  --srd-radius-lg: 20px;
+  --srd-radius-md: 14px;
+  --srd-radius-sm: 10px;
+  --srd-radius-pill: 999px;
+
+  --srd-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--srd-bg);
+  color: var(--srd-text);
+  font-family: 'Quicksand', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--srd-gold);
+  text-decoration: none;
+}
+a:hover {
+  color: #f3d386;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Utilitário reaproveitado pelas telas para o botão dourado em pílula */
+.srd-btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--srd-gold-gradient);
+  color: #1a150f;
+  font-weight: 700;
+  font-size: 13.5px;
+  border: none;
+  border-radius: var(--srd-radius-pill);
+  padding: 11px 20px;
+  white-space: nowrap;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.srd-btn-gold:hover {
+  filter: brightness(1.06);
+}
+.srd-btn-gold:active {
+  transform: scale(0.98);
+}
+
+.srd-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--srd-gold-soft);
+  border: 1px solid var(--srd-gold-border);
+  color: var(--srd-gold);
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: var(--srd-radius-pill);
+  padding: 9px 16px;
+  transition: background 0.15s ease;
+}
+.srd-btn-outline:hover {
+  background: rgba(232, 189, 110, 0.2);
+}
+
+.srd-card {
+  background: var(--srd-bg-card);
+  border: 1px solid var(--srd-border);
+  border-radius: var(--srd-radius-lg);
+}
+
+/* ============================================================
+   Fundo animado da tela de login — brilhos dourados que derivam
+   bem devagar atrás do card. Puramente CSS, sem dependências.
+   ============================================================ */
+.srd-login-bg {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--srd-bg);
+}
+
+.srd-login-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.035) 1px, transparent 0);
+  background-size: 26px 26px;
+  pointer-events: none;
+}
+
+.srd-login-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.srd-login-glow--1 {
+  width: 46vw;
+  height: 46vw;
+  max-width: 620px;
+  max-height: 620px;
+  top: -14%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(243, 211, 134, 0.5), transparent 70%);
+  animation: srd-drift-1 22s ease-in-out infinite;
+}
+
+.srd-login-glow--2 {
+  width: 40vw;
+  height: 40vw;
+  max-width: 560px;
+  max-height: 560px;
+  bottom: -16%;
+  right: -8%;
+  background: radial-gradient(circle, rgba(200, 134, 44, 0.45), transparent 70%);
+  animation: srd-drift-2 26s ease-in-out infinite;
+}
+
+.srd-login-glow--3 {
+  width: 26vw;
+  height: 26vw;
+  max-width: 380px;
+  max-height: 380px;
+  top: 40%;
+  left: 55%;
+  background: radial-gradient(circle, rgba(232, 189, 110, 0.3), transparent 70%);
+  animation: srd-drift-3 30s ease-in-out infinite;
+}
+
+@keyframes srd-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(6%, 8%) scale(1.08); }
+}
+
+@keyframes srd-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-7%, -6%) scale(1.1); }
+}
+
+@keyframes srd-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-10%, 10%) scale(0.92); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .srd-login-glow {
+    animation: none !important;
+  }
+}
