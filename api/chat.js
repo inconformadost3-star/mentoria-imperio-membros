@@ -26,6 +26,24 @@ const MODEL = 'gpt-5.6-luna'
 const MAX_HISTORY_MESSAGES = 12
 const MAX_OUTPUT_TOKENS = 500
 
+// Extrai o texto da resposta no formato do endpoint /v1/responses (diferente
+// do formato antigo de /v1/chat/completions, que vinha em data.choices[0]).
+function extractReplyText(data) {
+  if (typeof data.output_text === 'string' && data.output_text.trim()) {
+    return data.output_text.trim()
+  }
+  const output = Array.isArray(data.output) ? data.output : []
+  const parts = []
+  for (const item of output) {
+    if (item?.type === 'message' && Array.isArray(item.content)) {
+      for (const c of item.content) {
+        if (c?.type === 'output_text' && typeof c.text === 'string') parts.push(c.text)
+      }
+    }
+  }
+  return parts.join('\n').trim()
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'method not allowed' })
@@ -76,7 +94,11 @@ export default async function handler(req, res) {
   }))
 
   try {
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    // O modelo gpt-5.6-luna só responde pelo endpoint novo da OpenAI
+    // ("Responses"), não pelo endpoint clássico "Chat Completions" — por
+    // isso usamos /v1/responses aqui, com o formato de request diferente
+    // (instructions + input, em vez de messages).
+    const openaiRes = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -84,8 +106,9 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...recent],
-        max_tokens: MAX_OUTPUT_TOKENS,
+        instructions: SYSTEM_PROMPT,
+        input: recent,
+        max_output_tokens: MAX_OUTPUT_TOKENS,
       }),
     })
 
@@ -98,7 +121,7 @@ export default async function handler(req, res) {
     }
 
     const data = await openaiRes.json()
-    const reply = data.choices?.[0]?.message?.content?.trim()
+    const reply = extractReplyText(data)
     if (!reply) {
       res.status(502).json({ error: 'A IA respondeu vazio. Tente de novo.' })
       return
