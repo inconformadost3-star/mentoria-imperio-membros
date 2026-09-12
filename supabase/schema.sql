@@ -164,10 +164,17 @@ create table if not exists public.lesson_progress (
 create table if not exists public.chat_messages (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
+  -- Agrupa as mensagens em "conversas" separadas (cada vez que o aluno
+  -- clica em "Nova conversa" no Suporte, gera um id novo) — isso permite
+  -- guardar e listar o histórico de várias conversas, como no ChatGPT.
+  conversation_id uuid not null default gen_random_uuid(),
   role text not null check (role in ('user', 'assistant')),
   content text not null,
   created_at timestamptz not null default now()
 );
+
+create index if not exists chat_messages_user_conv_idx
+  on public.chat_messages (user_id, conversation_id, created_at);
 
 -- Projetos da Ferramenta (referência local aos projetos que vivem no
 -- sistema real de geração de oferta — se a Ferramenta já tiver seu próprio

@@ -159,6 +159,16 @@ export function IconLock({ size = 18, color = 'currentColor' }) {
   )
 }
 
+export function IconHistory({ size = 16, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...base}>
+      <path d="M3 12a9 9 0 1 0 3-6.7" />
+      <path d="M3 4v4h4" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  )
+}
+
 export function IconX({ size = 18, color = 'currentColor' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...base}>
