@@ -12,6 +12,8 @@
 //   POST { messages: [{ role: 'user' | 'assistant', content: string }, ...] }
 //   -> { reply: string }
 
+import { supabase, isSupabaseConfigured } from './supabaseClient.js'
+
 const CHAT_API_URL = import.meta.env.VITE_CHAT_API_URL
 
 const FALLBACK_REPLIES = [
@@ -31,9 +33,18 @@ export async function sendChatMessage(messages) {
     return fallbackReply()
   }
 
+  let token = null
+  if (isSupabaseConfigured) {
+    const { data: sessionData } = await supabase.auth.getSession()
+    token = sessionData?.session?.access_token || null
+  }
+
   const res = await fetch(CHAT_API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ messages }),
   })
 

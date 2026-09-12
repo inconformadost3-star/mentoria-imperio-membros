@@ -148,11 +148,14 @@ directory `dist`), se preferir.
 
 ## Outras conexões (Suporte 24/7, Sistema de Renda Digital)
 
-- **Suporte 24/7 (chat com IA)**: implemente um back-end (serverless
-  function, API própria etc.) que recebe `{ messages }` e devolve
-  `{ reply }`, guardando a chave da API de IA (OpenAI, Anthropic, ...) do
-  lado do servidor — nunca no front-end. Aponte `VITE_CHAT_API_URL` pra
-  esse endpoint. Sem isso, o chat responde com mensagens simuladas.
+- **Suporte 24/7 (chat com IA)**: já vem pronto em `api/chat.js`, usando a
+  API da OpenAI. Só precisa: (1) criar uma conta em platform.openai.com e
+  gerar uma API key; (2) colar ela na Vercel como `OPENAI_API_KEY` (variável
+  secreta, sem prefixo `VITE_`); (3) colocar `VITE_CHAT_API_URL=/api/chat`
+  nas variáveis do front-end; (4) gerar um novo deploy. Sem isso, o chat
+  responde com mensagens simuladas. O texto que o assistente segue (o que
+  ele sabe, como deve responder) está no topo de `api/chat.js`, na constante
+  `SYSTEM_PROMPT` — dá pra editar à vontade.
 - **Sistema de Renda Digital**: aponte `VITE_FERRAMENTA_URL` para o
   domínio real da ferramenta — é o link que aparece na sidebar, logo
   abaixo de Aulas. Sem configurar, o link fica inativo (`#`).

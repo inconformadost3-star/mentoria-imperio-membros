@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { sendChatMessage } from '../lib/chatClient.js'
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient.js'
+import { useAuth } from '../lib/AuthProvider.jsx'
 import { IconSend } from '../components/icons.jsx'
+
+// Guarda a conversa em chat_messages (só um histórico pra auditoria/
+// qualidade das respostas — não afeta em nada o funcionamento do chat se
+// der erro). Cada aluno só enxerga as próprias mensagens (RLS).
+function logMessage(userId, role, content) {
+  if (!isSupabaseConfigured || !userId) return
+  supabase.from('chat_messages').insert({ user_id: userId, role, content }).then(() => {})
+}
 
 const WELCOME = {
   role: 'assistant',
@@ -68,6 +78,7 @@ function TypingBubble() {
 }
 
 export default function Suporte() {
+  const { user } = useAuth()
   const [messages, setMessages] = useState([WELCOME])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -85,10 +96,12 @@ export default function Suporte() {
     setMessages(next)
     setInput('')
     setSending(true)
+    logMessage(user?.id, 'user', text)
 
     try {
       const reply = await sendChatMessage(next)
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+      logMessage(user?.id, 'assistant', reply)
     } catch {
       setMessages((prev) => [
         ...prev,

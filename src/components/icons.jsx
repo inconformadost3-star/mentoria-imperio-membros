@@ -159,6 +159,23 @@ export function IconLock({ size = 18, color = 'currentColor' }) {
   )
 }
 
+export function IconX({ size = 18, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...base}>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  )
+}
+
+export function IconCamera({ size = 18, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...base}>
+      <path d="M4 8.5a1.5 1.5 0 0 1 1.5-1.5h2l1-2h7l1 2h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z" />
+      <circle cx="12" cy="13" r="3.2" />
+    </svg>
+  )
+}
+
 export function IconTrash({ size = 14, color = 'currentColor' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} {...base}>

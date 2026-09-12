@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient.js'
 import { useAuth } from '../lib/AuthProvider.jsx'
 import { mockPosts } from '../data/mockData.js'
 import { IconHeart, IconComment } from '../components/icons.jsx'
+import StoriesBar from '../components/Stories.jsx'
 
 const CATEGORIES = [
   {
@@ -640,7 +641,16 @@ function Post({ post, onToggleLike }) {
             <span style={{ fontSize: 12.5, color: '#8f8577' }}>{post.time}</span>
           </div>
           {post.text && (
-            <p style={{ fontSize: 14, color: '#d8cfc2', lineHeight: 1.55, margin: '8px 0 12px' }}>
+            <p
+              style={{
+                fontSize: 14,
+                color: '#d8cfc2',
+                lineHeight: 1.55,
+                margin: '8px 0 12px',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
               {post.text}
             </p>
           )}
@@ -946,6 +956,8 @@ export default function Comunidade() {
           conectar a comunidade de verdade.
         </div>
       )}
+
+      <StoriesBar user={user} profile={profile} />
 
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <CategoryTabs active={activeTab} onSelect={handleSelectTab} counts={counts} />
